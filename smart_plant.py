@@ -47,6 +47,7 @@ ACTIVE      = 1
 INACTIVE    = 0
 B = 3975         # value of the thermistor
 notification = ""
+notificationIsReceived = -1   # no important notification has to be sent
 sensorValue    = [0, 0, 0, 0, 0, 0]
 isActive       = [0, 0, 0, 0, 0, 0]
 criticalLevel  = [100, 10, 50, 0, 0, 0]
@@ -200,13 +201,10 @@ def setup() :
         clientIsNotifiedOnCriticalLevel[HUMIDITY] = 1
         clientIsNotifiedOnLowLevel[HUMIDITY] = 0
   # send the appropriate notification and take care of thread
-  # doTheDelay = False
-  if notification == "":
+  if notification == "" and notificationIsReceived == -1:
     notification = "Ignore\n"
-  # else:
-  #   doTheDelay = True
-  sendNotification()
-  Timer(6, setup).start()
+  # sendNotification()
+  Timer(4, setup).start()
 
 #**************************************************************************************************
 # Routes for communicating with the client
@@ -264,8 +262,18 @@ def getResponseForLightSensor(action):
 # SERVER SENDS notifications to the client
 @app.route(NOTIFICATION_CENTER)
 def sendNotification():
+  global notificationIsReceived
   print "The notification: " + notification
+  if notification != "Ignore\n":
+    notificationIsReceived = 0
   return notification
+
+@app.route(NOTIFICATION_CENTER + '<message>')
+def receiveStateAboutNotification():
+  global notificationIsReceived
+  if message == 'received':
+    notificationIsReceived = 1
+  return "Thanks for the information about the notification!"
 
 @app.route(RESET_SERVER + '<whichSensors>')
 def resetServer(whichSensors):
