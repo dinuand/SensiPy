@@ -43,13 +43,15 @@ LIGHT       = 2  # connect light sensor on A2
 SOUND       = 3  # connect sound sensor on A3
 WATER_LEVEL = 4  # connect sound sensor on A4
 MOTION      = 5  # connect motion sensor on A5
-sensorValue = [0, 0, 0, 0, 0, 0]
-isActive = [0, 0, 0, 0, 0, 0]
-criticalLevel = [100, 10, 50, 0, 0, 0]
-lowLevel      = [400, 20, 400, 0, 0, 0]
-normalLevel   = [500, 25, 750, 0, 0, 0]
-B = 3975   # value of the thermistor
+B = 3975         # value of the thermistor
 notification = ""
+sensorValue    = [0, 0, 0, 0, 0, 0]
+isActive       = [0, 0, 0, 0, 0, 0]
+criticalLevel  = [100, 10, 50, 0, 0, 0]
+lowLevel       = [400, 20, 400, 0, 0, 0]
+normalLevel    = [500, 25, 750, 0, 0, 0]
+clientIsNotifiedOnLowLevel      = [0, 0, 0, 0, 0, 0]
+clientIsNotifiedOnCriticalLevel = [0, 0, 0, 0, 0, 0]
 
 #**************************************************************************************************
 # Get data from sensors and check it
@@ -138,6 +140,12 @@ def turnOnWater():
   delay(4 * 1000);
   digitalWrite(grove + 8, 0);
 
+# def clientIsNotifiedAtAll():
+#   for i in xrange(len(clientIsNotifiedOnLowLevel)):
+#     if clientIsNotifiedOnLowLevel[i] == 1 or clientIsNotifiedOnCriticalLevel[i] == 1:
+#       return 0
+#   return 1
+
 def setup() :
   print "Hello from setup"
   # calculate each sensor's value
@@ -153,27 +161,39 @@ def setup() :
   global notification
   if thereAreActiveSensors == 1:
     notification = ""
-  else: 
-    notification = "Ignore\n"
   # check and solve every test-case with low or critically levels
   # check for LIGHT
   if isActive[LIGHT] == 1 :
     if sensorValue[LIGHT] >= criticalLevel[LIGHT] and sensorValue[LIGHT] <= lowLevel[LIGHT] :
-      notification += "Light\n"
+      if clientIsNotifiedOnLowLevel[LIGHT] == 0:
+        notification += "Light\n"
+        clientIsNotifiedOnLowLevel[LIGHT] = 1
+        clientIsNotifiedOnCriticalLevel[LIGHT] = 0
     elif sensorValue[LIGHT] < criticalLevel[LIGHT]:
-      notification = ""
+      # notification = ""
       turnOnLight()
-      notification += "Light-auto adjusted!\n"
+      if clientIsNotifiedOnCriticalLevel[LIGHT] == 0:
+        notification += "Light-auto adjusted!\n"
+        clientIsNotifiedOnCriticalLevel[LIGHT] = 1
+        clientIsNotifiedOnLowLevel[LIGHT] = 0
     elif sensorValue[LIGHT] > normalLevel[LIGHT]:
       turnOffLight()
   # check for HUMIDITY
   if isActive[HUMIDITY] == 1:
     if sensorValue[HUMIDITY] >= criticalLevel[HUMIDITY] and sensorValue[HUMIDITY] <= lowLevel[HUMIDITY] :
-      notification += "Humidity\n"
+      if clientIsNotifiedOnLowLevel[HUMIDITY] == 0:
+        notification += "Humidity\n"
+        clientIsNotifiedOnLowLevel[HUMIDITY] = 1
+        clientIsNotifiedOnCriticalLevel[HUMIDITY] = 0
     elif sensorValue[HUMIDITY] < criticalLevel[HUMIDITY]:
       turnOnWater()
-      notification += "Humidity-auto adjusted!\n"
+      if clientIsNotifiedOnCriticalLevel[HUMIDITY] == 0:
+        notification += "Humidity-auto adjusted!\n"
+        clientIsNotifiedOnCriticalLevel[HUMIDITY] = 1
+        clientIsNotifiedOnLowLevel[HUMIDITY] = 0
   # send the appropriate notification and take care of thread
+  if notification == "":
+    notification = "Ignore\n"
   sendNotification()
   Timer(5, setup).start()
 
@@ -234,6 +254,15 @@ def getResponseForLightSensor(action):
 def sendNotification():
   print "The notification: " + notification
   return notification
+
+@app.route('/sensors/reset')
+def resetServer():
+  global isActive
+  global sensorValue
+  for i in xrange(len(isActive)):
+    isActive[i] = sensorValue[i] = 0
+    clientIsNotifiedOnLowLevel[i] = clientIsNotifiedOnCriticalLevel[i] = 0
+  return "Server is now reseted!"
 
 @app.route('/user/<data_from_client>')
 def user_credentials(data_from_client) :
