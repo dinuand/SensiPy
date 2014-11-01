@@ -43,6 +43,8 @@ LIGHT       = 2  # connect light sensor on A2
 SOUND       = 3  # connect sound sensor on A3
 WATER_LEVEL = 4  # connect sound sensor on A4
 MOTION      = 5  # connect motion sensor on A5
+ACTIVE      = 1
+INACTIVE    = 0
 B = 3975         # value of the thermistor
 notification = ""
 sensorValue    = [0, 0, 0, 0, 0, 0]
@@ -103,24 +105,30 @@ def sendMessage(message, number):
 # Parse string that server receives from client about the active sensorValue
 #**************************************************************************************************
 
-def parseString(receivedDataString) :
+def setSensorsState(receivedDataString, state) :
   print "Hello from parser"
   listOfSensors = receivedDataString.split('_')
   global isActive
   for i in xrange(len(listOfSensors) - 1) :
     print listOfSensors[i]
     if listOfSensors[i]   == 'Humidity' :
-      isActive[HUMIDITY]    = 1 
+      isActive[HUMIDITY]    = state
+      clientIsNotifiedOnLowLevel[HUMIDITY] = clientIsNotifiedOnCriticalLevel[HUMIDITY] = 0 
     elif listOfSensors[i] == 'Water-Level' :
-      isActive[WATER_LEVEL] = 1
+      isActive[WATER_LEVEL] = state
+      clientIsNotifiedOnLowLevel[WATER_LEVEL] = clientIsNotifiedOnCriticalLevel[WATER_LEVEL] = 0
     elif listOfSensors[i] == 'Light' :
-      isActive[LIGHT]       = 1 
+      isActive[LIGHT]       = state 
+      clientIsNotifiedOnLowLevel[LIGHT] = clientIsNotifiedOnCriticalLevel[LIGHT] = 0
     elif listOfSensors[i] == 'Temperature' :
-      isActive[TEMPERATURE] = 1
+      isActive[TEMPERATURE] = state
+      clientIsNotifiedOnLowLevel[TEMPERATURE] = clientIsNotifiedOnCriticalLevel[TEMPERATURE] = 0
     elif listOfSensors[i] == 'Sound' :
-      isActive[SOUND]       = 1
+      isActive[SOUND]       = state
+      clientIsNotifiedOnLowLevel[SOUND] = clientIsNotifiedOnCriticalLevel[SOUND] = 0
     elif listOfSensors[i] == 'Motion' :
-      isActive[MOTION]      = 1
+      isActive[MOTION]      = state
+      clientIsNotifiedOnLowLevel[MOTION] = clientIsNotifiedOnCriticalLevel[MOTION] = 0
 
 #**************************************************************************************************
 # Calculations & actions
@@ -192,19 +200,23 @@ def setup() :
         clientIsNotifiedOnCriticalLevel[HUMIDITY] = 1
         clientIsNotifiedOnLowLevel[HUMIDITY] = 0
   # send the appropriate notification and take care of thread
+  # doTheDelay = False
   if notification == "":
     notification = "Ignore\n"
+  # else:
+  #   doTheDelay = True
   sendNotification()
-  Timer(5, setup).start()
+  Timer(6, setup).start()
 
 #**************************************************************************************************
 # Routes for communicating with the client
 #**************************************************************************************************
 
-NOTIFICATION_CENTER = '/sensors/notification/'              # server notificates client 
-LIGHT_ACTION = '/sensors/Light/action/'                     # route to light sensor [server data]
-HUMIDITY_ACTION = '/sensors/Humidity/action/'               # route to hum sensor [server data]
-WATER_LEVEL_SPS = '/sensors/flood/'
+NOTIFICATION_CENTER = '/sensors/notification/'        # server notificates client 
+LIGHT_ACTION = '/sensors/Light/action/'               # route to light sensor [server data]
+HUMIDITY_ACTION = '/sensors/Humidity/action/'         # route to hum sensor [server data]
+WATER_LEVEL_SPS = '/sensors/flood/'                   #
+RESET_SERVER = '/sensors/reset/'                       # reset the server
 
 # SERVER SENDS to the client a list with general available sensorValue on the board
 @app.route('/sensors/list')
@@ -212,9 +224,9 @@ def sensorsList():
   return "Humidity#Temperature#Light#Sound#Water-Level#Motion#UV#Vibration"
 
 # SERVER RECEIVES the active sensorValue list from client
-@app.route('/sensors/activate/<data_from_client>')
-def activateSensors(data_from_client):
-  parseString(data_from_client)
+@app.route('/sensors/activate/<whichSensors>')
+def activateSensors(whichSensors):
+  setSensorsState(whichSensors, ACTIVE)
   return "Data reached server. Thanks"
 
 # SERVER SENDS some data to the client about the time before water flood
@@ -228,12 +240,12 @@ def send_response_for_flood_time():
 # SERVER SENDS data to client about all active sensorValue
 @app.route('/sensors/update/')
 def sendUpdatesAboutSensors() :
-  data_out = ""
+  dataToBePosted = ""
   numberOfSensors = len(isActive)
   for i in xrange(numberOfSensors - 1) :
     if isActive[i] == 1 :
-      data_out += '#' + str(sensorValue[i])
-  return data_out
+      dataToBePosted += '#' + str(sensorValue[i])
+  return dataToBePosted
 
 # SERVER RECEIVES some info from client about the humidity sensor
 @app.route(HUMIDITY_ACTION + '<action>')
@@ -255,14 +267,12 @@ def sendNotification():
   print "The notification: " + notification
   return notification
 
-@app.route('/sensors/reset')
-def resetServer():
+@app.route(RESET_SERVER + '<whichSensors>')
+def resetServer(whichSensors):
   global isActive
   global sensorValue
-  for i in xrange(len(isActive)):
-    isActive[i] = sensorValue[i] = 0
-    clientIsNotifiedOnLowLevel[i] = clientIsNotifiedOnCriticalLevel[i] = 0
-  return "Server is now reseted!"
+  setSensorsState(whichSensors, INACTIVE)
+  return "Server has reset the values from some sensors!"
 
 @app.route('/user/<data_from_client>')
 def user_credentials(data_from_client) :
