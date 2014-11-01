@@ -97,10 +97,11 @@ def getDataFromSensors() :
 #**************************************************************************************************
 
 def sendMessage(message, number):
-  twilioAccount = 'ACcddeaecc38d98989c00fd7f86c5c0271'
-  twilioToken   = 'e9dbad9c7a9130ddc1e5c0baab3f83d7'
-  twilioClient  = TwilioRestClient(twilioAccount, twilioToken)
-  message = twilio_client.messages.create(to=number, from_='+14063330030', body=message)
+  print "This is Twilio"
+  twilio_account = 'ACcddeaecc38d98989c00fd7f86c5c0271'
+  twilio_token   = 'e9dbad9c7a9130ddc1e5c0baab3f83d7'
+  twilio_client  = TwilioRestClient(twilio_account, twilio_token)
+  Message = twilio_client.messages.create(to=number, from_='+14063330030', body=message)
 
 #**************************************************************************************************
 # Parse string that server receives from client about the active sensorValue
@@ -296,15 +297,20 @@ def resetServer(whichSensors):
   setSensorsState(whichSensors, INACTIVE)
   return "Server has reset the values from some sensors!"
 
-@app.route('/user/<data_from_client>')
-def user_credentials(data_from_client) :
-  userString = data_from_client.split('#')
-  message = 'Welcome to our service, %s!' %userString[0]
+@app.route('/user/' + '<action>')
+def sayHelloToUser(action) :
+  userString = action.split('_')
+  print userString[0]
+  message = ""
+  message = 'Welcome to Smart Plant project, %s! Have a good night!' %userString[0]
+  print userString[1]
+  print message
   aux = ""
   aux += '+4'
   aux += userString[1]
-  userString[1] = aux
-  sendMessage(message, userString[1])
+  print aux
+  # userString[1] = aux
+  sendMessage(message, aux)
   return "Data reached server. Thanks!"
 
 #**************************************************************************************************
