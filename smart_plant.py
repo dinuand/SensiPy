@@ -47,7 +47,7 @@ ACTIVE      = 1
 INACTIVE    = 0
 B = 3975         # value of the thermistor
 notification = ""
-notificationIsReceived = -1   # no important notification has to be sent
+notificationIsReceived = 1
 sensorValue    = [0, 0, 0, 0, 0, 0]
 isActive       = [0, 0, 0, 0, 0, 0]
 criticalLevel  = [100, 10, 50, 0, 0, 0]
@@ -97,10 +97,10 @@ def getDataFromSensors() :
 #**************************************************************************************************
 
 def sendMessage(message, number):
-  twilioAccount = 'AC5dfbe9ffc9bdeb8233a915b9aca401af'
-  twilioToken   = 'e2eda003091975e928854e4417ca9612'
+  twilioAccount = 'ACcddeaecc38d98989c00fd7f86c5c0271'
+  twilioToken   = 'e9dbad9c7a9130ddc1e5c0baab3f83d7'
   twilioClient  = TwilioRestClient(twilioAccount, twilioToken)
-  message = twilio_client.messages.create(to=number, from_='+19065239921', body=message)
+  message = twilio_client.messages.create(to=number, from_='+14063330030', body=message)
 
 #**************************************************************************************************
 # Parse string that server receives from client about the active sensorValue
@@ -168,7 +168,7 @@ def setup() :
     print "Temperature: " + str(sensorValue[TEMPERATURE])
 
   global notification
-  if thereAreActiveSensors == 1:
+  if thereAreActiveSensors == 1 and notificationIsReceived == 1:
     notification = ""
   # check and solve every test-case with low or critically levels
   # check for LIGHT
@@ -185,8 +185,9 @@ def setup() :
         notification += "Light-auto adjusted!\n"
         clientIsNotifiedOnCriticalLevel[LIGHT] = 1
         clientIsNotifiedOnLowLevel[LIGHT] = 0
-    elif sensorValue[LIGHT] > normalLevel[LIGHT]:
+    elif sensorValue[LIGHT] >= normalLevel[LIGHT]:
       turnOffLight()
+      clientIsNotifiedOnLowLevel[LIGHT] = 0
   # check for HUMIDITY
   if isActive[HUMIDITY] == 1:
     if sensorValue[HUMIDITY] >= criticalLevel[HUMIDITY] and sensorValue[HUMIDITY] <= lowLevel[HUMIDITY] :
@@ -200,11 +201,13 @@ def setup() :
         notification += "Humidity-auto adjusted!\n"
         clientIsNotifiedOnCriticalLevel[HUMIDITY] = 1
         clientIsNotifiedOnLowLevel[HUMIDITY] = 0
+    elif sensorValue[HUMIDITY] >= normalLevel[HUMIDITY]:
+      clientIsNotifiedOnLowLevel[HUMIDITY] = 0
   # send the appropriate notification and take care of thread
-  if notification == "" and notificationIsReceived == -1:
+  if notification == "" and notificationIsReceived == 1:
     notification = "Ignore\n"
   # sendNotification()
-  Timer(4, setup).start()
+  Timer(3, setup).start()
 
 #**************************************************************************************************
 # Routes for communicating with the client
@@ -241,8 +244,19 @@ def sendUpdatesAboutSensors() :
   dataToBePosted = ""
   numberOfSensors = len(isActive)
   for i in xrange(numberOfSensors - 1) :
-    if isActive[i] == 1 :
-      dataToBePosted += '#' + str(sensorValue[i])
+    if isActive[i] == 1:
+      if i == LIGHT:
+        dataToBePosted += '#' + 'Light=' + str(sensorValue[i])
+      elif i == HUMIDITY:
+        dataToBePosted += '#' + 'Humidity=' + str(sensorValue[i])
+      elif i == TEMPERATURE:
+        dataToBePosted += '#' + 'Temperature=' + str(sensorValue[i])
+      elif i == WATER_LEVEL:
+        dataToBePosted += '#' + 'Water-Level=' + str(sensorValue[i])
+      elif i == SOUND:
+        dataToBePosted += '#' + 'Sound=' + str(sensorValue[i])
+      elif i == MOTION:
+        dataToBePosted += '#' + 'Motion=' + str(sensorValue[i])
   return dataToBePosted
 
 # SERVER RECEIVES some info from client about the humidity sensor
@@ -268,10 +282,10 @@ def sendNotification():
     notificationIsReceived = 0
   return notification
 
-@app.route(NOTIFICATION_CENTER + '<message>')
-def receiveStateAboutNotification():
+@app.route(NOTIFICATION_CENTER + '<action>')
+def receiveStateAboutNotification(action):
   global notificationIsReceived
-  if message == 'received':
+  if action == 'received' :
     notificationIsReceived = 1
   return "Thanks for the information about the notification!"
 
@@ -285,7 +299,7 @@ def resetServer(whichSensors):
 @app.route('/user/<data_from_client>')
 def user_credentials(data_from_client) :
   userString = data_from_client.split('#')
-  message = 'Welcome to our service, %s! Senso Check team wish you a happy holiday!' %userString[0]
+  message = 'Welcome to our service, %s!' %userString[0]
   aux = ""
   aux += '+4'
   aux += userString[1]
