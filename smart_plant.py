@@ -51,7 +51,7 @@ notificationIsReceived = 1
 sensorValue    = [0, 0, 0, 0, 0, 0]
 isActive       = [0, 0, 0, 0, 0, 0]
 criticalLevel  = [100, 10, 50, 0, 0, 0]
-lowLevel       = [400, 20, 400, 0, 0, 0]
+lowLevel       = [600, 20, 400, 0, 0, 0]
 normalLevel    = [600, 25, 750, 0, 0, 0]
 clientIsNotifiedOnLowLevel      = [0, 0, 0, 0, 0, 0]
 clientIsNotifiedOnCriticalLevel = [0, 0, 0, 0, 0, 0]
@@ -69,7 +69,7 @@ def printOnLcd():
   lcd.setCursor(0,0)
   lcd.write(str('Hi! :)'))
   lcd.setCursor(0,1)
-  lcd.write(str('I\'m SmartPlant.'))
+  lcd.write(str('Im SmartPlant.'))
 
 #**************************************************************************************************
 # Get data from sensors and check it
@@ -162,7 +162,7 @@ def turnOffLight():
 def turnOnWater():
   pinMode(5, 1);
   digitalWrite(grove + 8, 1);
-  delay(4 * 1000);
+  delay(3 * 1000);
   digitalWrite(grove + 8, 0);
 
 # def clientIsNotifiedAtAll():
@@ -320,7 +320,7 @@ def sayHelloToUser(action) :
   userString = action.split('_')
   print userString[0]
   message = ""
-  message = 'Welcome to Smart Plant project, %s! Have a good night' %userString[0]
+  message = 'Welcome to Smart Plant project, %s! Have a good day!' %userString[0]
   # print userString[0]
   print message
   aux = ""
