@@ -6,7 +6,7 @@ app = flask.Flask(__name__)
 # app.config['DEBUG'] = True
 
 import os
-
+import struct
 import sys
 try:
   from twilio.rest import TwilioRestClient
@@ -52,9 +52,24 @@ sensorValue    = [0, 0, 0, 0, 0, 0]
 isActive       = [0, 0, 0, 0, 0, 0]
 criticalLevel  = [100, 10, 50, 0, 0, 0]
 lowLevel       = [400, 20, 400, 0, 0, 0]
-normalLevel    = [500, 25, 750, 0, 0, 0]
+normalLevel    = [600, 25, 750, 0, 0, 0]
 clientIsNotifiedOnLowLevel      = [0, 0, 0, 0, 0, 0]
 clientIsNotifiedOnCriticalLevel = [0, 0, 0, 0, 0, 0]
+
+lcd = rgb_lcd()
+lcd.begin(16, 2)
+
+def colorToRGB (color):
+  return struct.unpack ('BBB', color[1:].decode('hex'))
+
+def printOnLcd():
+  color = colorToRGB('#ff0000')
+  global lcd
+  lcd.setRGB(color[0], color[1], color[2] )
+  lcd.setCursor(0,0)
+  lcd.write(str('Hi! :)'))
+  lcd.setCursor(0,1)
+  lcd.write(str('I\'m SmartPlant.'))
 
 #**************************************************************************************************
 # Get data from sensors and check it
@@ -101,7 +116,7 @@ def sendMessage(message, number):
   twilio_account = 'ACcddeaecc38d98989c00fd7f86c5c0271'
   twilio_token   = 'e9dbad9c7a9130ddc1e5c0baab3f83d7'
   twilio_client  = TwilioRestClient(twilio_account, twilio_token)
-  Message = twilio_client.messages.create(to=number, from_='+14063330030', body=message)
+  myMessage = twilio_client.messages.create(to=number, from_='+14063330030', body=message)
 
 #**************************************************************************************************
 # Parse string that server receives from client about the active sensorValue
@@ -189,6 +204,7 @@ def setup() :
     elif sensorValue[LIGHT] >= normalLevel[LIGHT]:
       turnOffLight()
       clientIsNotifiedOnLowLevel[LIGHT] = 0
+      clientIsNotifiedOnCriticalLevel[LIGHT] = 0
   # check for HUMIDITY
   if isActive[HUMIDITY] == 1:
     if sensorValue[HUMIDITY] >= criticalLevel[HUMIDITY] and sensorValue[HUMIDITY] <= lowLevel[HUMIDITY] :
@@ -204,6 +220,7 @@ def setup() :
         clientIsNotifiedOnLowLevel[HUMIDITY] = 0
     elif sensorValue[HUMIDITY] >= normalLevel[HUMIDITY]:
       clientIsNotifiedOnLowLevel[HUMIDITY] = 0
+      clientIsNotifiedOnCriticalLevel[HUMIDITY] = 0
   # send the appropriate notification and take care of thread
   if notification == "" and notificationIsReceived == 1:
     notification = "Ignore\n"
@@ -299,11 +316,12 @@ def resetServer(whichSensors):
 
 @app.route('/user/' + '<action>')
 def sayHelloToUser(action) :
+  userString = ""
   userString = action.split('_')
   print userString[0]
   message = ""
-  message = 'Welcome to Smart Plant project, %s! Have a good night!' %userString[0]
-  print userString[1]
+  message = 'Welcome to Smart Plant project, %s! Have a good night' %userString[0]
+  # print userString[0]
   print message
   aux = ""
   aux += '+4'
@@ -317,6 +335,7 @@ def sayHelloToUser(action) :
 # Run Flask application
 #**************************************************************************************************
 
+printOnLcd()
 setup()
 
 if __name__ == '__main__':
