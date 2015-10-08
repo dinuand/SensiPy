@@ -5,5 +5,6 @@ Welcome!
 
 * Very easy to try it out, you just need an Android smartphone.
 * The app is using the [Wyliodrin](https://www.wyliodrin.com) platform.
+* The Android codebase is not in this repo yet.
 
 * Other details will be available soon.
